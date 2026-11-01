@@ -790,15 +790,21 @@ public partial class SmokeTest : Node
             Check(ok[0], "Play(2, 0.1f) completes");
         }
 
-        // a Transition that loops forever (Basics/Demo_Transition), stopped by hand
-        GComponent demo = Keep(UIPackage.CreateObject("Basics", "Demo_Transition").asCom);
-        GRoot.inst.AddChild(demo);
-        Transition peng = demo.GetChild("n3").asCom.GetTransition("peng");
-        peng.Play(int.MaxValue, 0, null);
-        yield return Frames(10);
-        Check(peng.playing, "endless transition is playing");
-        peng.Stop();
-        Check(!peng.playing, "endless transition stops");
+        // a Transition that loops forever (times = -1), stopped by hand.
+        // (The shipped Basics package has no Demo_Transition component, so use Transition/TRAP.)
+        GComponent trap = Keep(UIPackage.CreateObject("Transition", "TRAP").asCom);
+        GRoot.inst.AddChild(trap);
+        Transition endless = trap.GetTransition("t0");
+        if (Check(endless != null, "TRAP has transition t0"))
+        {
+            bool endlessCompleted = false;
+            endless.Play(-1, 0, () => { endlessCompleted = true; });
+            yield return Frames(120);
+            Check(endless.playing, "endless transition is still playing after 120 frames");
+            Check(!endlessCompleted, "endless transition never completes on its own");
+            endless.Stop();
+            Check(!endless.playing, "endless transition stops");
+        }
     }
 
     IEnumerator PhaseController()
