@@ -1,0 +1,14 @@
+# Reference sources (not part of this project)
+_ref/
+
+# Godot
+.godot/
+*.translation
+export_presets.cfg
+
+# .NET
+.mono/
+bin/
+obj/
+*.user
+.vs/

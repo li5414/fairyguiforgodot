@@ -1,0 +1,16 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <LangVersion>12</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>FairyGUI</RootNamespace>
+    <!-- Ported code keeps the Unity SDK's structure; silence noise that is expected for a 1:1 port. -->
+    <NoWarn>$(NoWarn);CS0162;CS0168;CS0169;CS0219;CS0414;CS0649;CS0067;CS0108;CS0114</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Reference sources (FairyGUI-unity) live in _ref/ and must never be compiled. -->
+    <Compile Remove="_ref/**" />
+  </ItemGroup>
+</Project>
