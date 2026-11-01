@@ -1,0 +1,28 @@
+// Ported from FairyGUI-unity: Assets/Scripts/Core/HitTest/IHitTest.cs
+using Godot;
+
+namespace FairyGUI
+{
+    /// <summary>
+    ///
+    /// </summary>
+    public enum HitTestMode
+    {
+        Default,
+        Raycast
+    }
+
+    /// <summary>
+    ///
+    /// </summary>
+    public interface IHitTest
+    {
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="contentRect"></param>
+        /// <param name="localPoint"></param>
+        /// <returns></returns>
+        bool HitTest(Rect contentRect, Vector2 localPoint);
+    }
+}
