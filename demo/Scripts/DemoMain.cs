@@ -189,6 +189,7 @@ public partial class DemoMain : Node2D
             _backBtn.visible = true;
             currentExample = name;
 
+            DemoUtil.ApplyBackground(entry.background);
             _current = entry.create();
             _current.Name = name + "Example";
             AddChild(_current);
@@ -218,6 +219,7 @@ public partial class DemoMain : Node2D
             node.QueueFree();
         }
 
+        DemoUtil.ApplyBackground(DemoUtil.DefaultBackground);
         _backBtn.visible = false;
         _menu.visible = true;
     }

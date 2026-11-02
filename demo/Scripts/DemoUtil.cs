@@ -14,6 +14,19 @@ public static class DemoUtil
     public const int DesignWidth = 1136;
     public const int DesignHeight = 640;
 
+    /// <summary>
+    /// Clear color of the Main Camera (Clear Flags: Solid Color) in most Unity example scenes.
+    /// </summary>
+    public static readonly Color DefaultBackground = new Color(0.21215399f, 0.23259084f, 0.2647059f);
+
+    /// <summary>
+    /// Sets the viewport clear color, the equivalent of the example scene's camera background in Unity.
+    /// </summary>
+    public static void ApplyBackground(Color color)
+    {
+        RenderingServer.SetDefaultClearColor(color);
+    }
+
     static bool _inited;
     static readonly Random _random = new Random();
 
@@ -182,8 +195,9 @@ public static class DemoUtil
             panel.Name = "HeadBar";
             panel.packageName = "HeadBar";
             panel.componentName = "HeadBar";
-            // cachedUISize of the Unity prefab was 145x106: center it above the head
-            panel.Position = new Vector2(-72, NpcHeadTop - 106 - 10);
+            // HeadBar/HeadBar has pivot (0.5,1) with pivotAsAnchor, so the panel origin is the bottom-center of the
+            // bar (as in Unity): place it 10 px above the head, no extra centering offset.
+            panel.Position = new Vector2(0, NpcHeadTop - 10);
             npc.AddChild(panel);
         }
 

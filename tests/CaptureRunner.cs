@@ -40,7 +40,10 @@ public partial class CaptureRunner : Node
             Func<Node> create = null;
             foreach (DemoRegistry.Entry e in DemoRegistry.Examples)
                 if (string.Equals(e.name, _example, StringComparison.OrdinalIgnoreCase))
+                {
                     create = e.create;
+                    DemoUtil.ApplyBackground(e.background);
+                }
             if (create == null)
             {
                 GD.PrintErr("[CAPTURE] unknown example: " + _example);
