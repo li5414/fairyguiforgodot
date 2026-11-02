@@ -15,5 +15,7 @@ void fragment() {
 	if (c.a > 0.0001) {
 		c.rgb /= c.a;
 	}
-	COLOR = fgui_process(COLOR * c);
+	// Not `COLOR * c` (Godot's default CanvasGroup shader): the group's children were drawn into the back buffer with
+	// every ancestor alpha already applied, and COLOR carries that same modulate again. Unity applies it once.
+	COLOR = fgui_process(c);
 }

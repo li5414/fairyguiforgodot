@@ -1174,6 +1174,16 @@ namespace FairyGUI
             {
                 return HandleKeyEvent((InputEventKey)evt);
             }
+            else if (evt is InputEventPanGesture)
+            {
+                // [Godot] macOS trackpad / Magic Mouse and Wayland touchpad scrolling arrive as pan gestures, not as
+                // wheel buttons (Unity: EventType.ScrollWheel). Delta.Y > 0 scrolls down, like Unity's delta.y.
+                // One pan unit is treated like one wheel factor unit, i.e. 3 lines (see the wheel mapping above).
+                InputEventPanGesture pg = (InputEventPanGesture)evt;
+                if (pg.Delta.Y == 0)
+                    return false;
+                return HandleMouseWheel(pg.Delta.Y * 3, pg.Position);
+            }
 
             return false;
         }

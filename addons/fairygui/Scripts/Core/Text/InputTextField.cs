@@ -93,6 +93,7 @@ namespace FairyGUI
         Shape _caret;
         SelectionShape _selectionShape;
         float _nextBlink;
+        bool _imeWindowFocused; // [Godot] window focus seen last frame, to re-arm the IME after a focus loss
 
         const int GUTTER_X = 2;
         const int GUTTER_Y = 2;
@@ -922,6 +923,20 @@ namespace FairyGUI
 
             if (_editing)
             {
+                // [Godot] X11 and Wayland switch the window's IME off when the window loses focus and do not restore
+                // it (Windows/macOS keep it). Re-arm it when the window regains focus, as LineEdit does.
+                if (_IMEOwner == this)
+                {
+                    Godot.Window w = GodotObject.IsInstanceValid(node) && node.IsInsideTree() ? node.GetWindow() : null;
+                    bool windowFocused = w != null && w.HasFocus();
+                    if (windowFocused && !_imeWindowFocused && _IMEWindowId != INVALID_WINDOW_ID)
+                    {
+                        DisplayServer.WindowSetImeActive(true, _IMEWindowId);
+                        UpdateIMEPosition();
+                    }
+                    _imeWindowFocused = windowFocused;
+                }
+
                 if (_nextBlink < FrameTime.time)
                 {
                     _nextBlink = FrameTime.time + 0.5f;
@@ -1551,7 +1566,11 @@ namespace FairyGUI
                     ((InputTextField)focus).CheckComposition();
             }
 
-            return compositionString.Length > 0;
+            // [Godot] A pressed key with a Unicode character is committed text: the platform layers already drop raw
+            // keys while composing. Godot dispatches key events after the OS pump, so when the same pump also started
+            // the next composition (Korean syllables, Japanese implicit confirmation), ImeGetText() is already non-empty
+            // here: eating the commit would lose the text.
+            return compositionString.Length > 0 && !(evt.Pressed && evt.Unicode != 0);
         }
 
         /// <summary>

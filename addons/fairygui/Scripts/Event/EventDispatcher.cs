@@ -487,8 +487,10 @@ namespace FairyGUI
             if (this is DisplayObject)
             {
                 DisplayObject element = (DisplayObject)this;
+                DisplayObject root = element;
                 while ((element = element.parent) != null)
                 {
+                    root = element;
                     bridge = element.TryGetEventBridge(strType);
                     if (bridge != null && !bridge.isEmpty)
                         chain.Add(bridge);
@@ -499,6 +501,16 @@ namespace FairyGUI
                         if (bridge != null && !bridge.isEmpty)
                             chain.Add(bridge);
                     }
+                }
+
+                // [Godot] A registered panel root (UIPanel/UIPainter) was a Stage child in Unity: keep bubbling
+                // into the Stage, so Stage-level listeners (GRoot popups, gestures, onKeyDown) see panel events.
+                Container panelRoot = root as Container;
+                if (panelRoot != null && !(panelRoot is Stage) && Stage.IsRegisteredPanel(panelRoot))
+                {
+                    bridge = Stage.inst.TryGetEventBridge(strType);
+                    if (bridge != null && !bridge.isEmpty)
+                        chain.Add(bridge);
                 }
             }
             else if (this is GObject)

@@ -33,5 +33,6 @@ void fragment() {
 	if (c.a > 0.0001) {
 		c.rgb /= c.a;
 	}
-	COLOR = fgui_process(COLOR * c);
+	// Not `COLOR * c`: the back buffer already contains the ancestor alpha (see fairygui_painting.gdshader).
+	COLOR = fgui_process(c);
 }

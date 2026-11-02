@@ -1044,7 +1044,12 @@ namespace FairyGUI
                 DisplayObject currentObject = this;
                 while (currentObject.parent != null)
                     currentObject = currentObject.parent;
-                return currentObject as Container;
+                // [Godot] A registered panel root (UIPanel/UIPainter) was a Stage child in Unity, so its content
+                // is on stage: stage, onAddedToStage, click/rollOver/focus and touch monitors depend on this.
+                Container root = currentObject as Container;
+                if (root != null && !(root is Stage) && Stage.IsRegisteredPanel(root))
+                    return Stage.inst;
+                return root;
             }
         }
 
@@ -1936,8 +1941,8 @@ namespace FairyGUI
 
         /// <summary>
         /// [Godot] alpha -> node.Modulate.a. An active mask keeps Modulate.a = 1 and writes its alpha to
-        /// SelfModulate instead, so the mask's alpha only affects the mask shape and not the masked content
-        /// (in Unity the mask alpha never reached the masked content either).
+        /// SelfModulate instead. The mask materials (Container) test mask alpha > 0.001 like Unity's stencil, so the
+        /// mask's alpha does not reach the masked content (as in Unity) unless it is 0.
         /// </summary>
         internal void ApplyAlpha()
         {

@@ -16,17 +16,19 @@ namespace FairyGUI
     //   screen space, also clips this container's own graphics). clipSoftness is not supported.
     // - mask (normal): Godot needs the mask to be the parent of the masked content, so an internal node is added:
     //     node
-    //       MaskRoot (internal, identity, no material)
-    //         <mask node>            ClipChildren = Only, UseParentMaterial (the default clip shader is used)
+    //       MaskRoot (internal, identity, material = fairygui_mask: back buffer shown where mask alpha > 0.001)
+    //         <mask node>            ClipChildren = Only, UseParentMaterial (drawn with MaskRoot's clip material)
     //           MaskContent (internal back child, transform = inverse of the mask node transform)
     //             <other children, in display list order>
     // - mask (reversed): Godot has no inverted ClipChildren. The content is grouped and the mask erases it:
     //     node
-    //       MaskRoot (internal, CanvasGroup Transparent)
+    //       MaskRoot (internal, CanvasGroup Transparent, material = fairygui_painting: no double ancestor alpha)
     //         <other children, in display list order>
-    //         MaskEraser (shader blend_mul, COLOR = 1 - mask alpha)
+    //         MaskEraser (shader blend_mul, COLOR = 1 - step(0.001, mask alpha): a binary hole)
     //           <mask node>          UseParentMaterial
-    // - The mask's alpha is applied to its SelfModulate (not Modulate) so it never fades the masked content.
+    // - Both mask tests are binary like Unity's stencil (alpha > 0.001), so mask edges are hard as in Unity.
+    // - The mask's alpha is applied to its SelfModulate (not Modulate); with the binary test it never fades the masked
+    //   content either.
     // - CanvasGroup (painting mode) and ClipChildren both use the backbuffer; nesting them may not render correctly.
     public class Container : DisplayObject
     {
@@ -97,6 +99,8 @@ namespace FairyGUI
         Node2D _maskContent;
         Node2D _maskEraser;
         static ShaderMaterial _maskEraseMaterial;
+        static ShaderMaterial _maskClipMaterial;
+        static ShaderMaterial _maskGroupMaterial;
 
         /// <summary>
         ///
@@ -1159,6 +1163,7 @@ namespace FairyGUI
                 // content is grouped, then the mask shape multiplies it by (1 - mask alpha)
                 RenderingServer.CanvasItemSetCanvasGroupMode(_maskRoot.GetCanvasItem(),
                     RenderingServer.CanvasGroupMode.Transparent, 5, true, 0, false);
+                _maskRoot.Material = GetMaskGroupMaterial();
                 _maskEraser = new Node2D();
                 _maskEraser.Name = "MaskEraser";
                 _maskEraser.Material = GetMaskEraseMaterial();
@@ -1170,7 +1175,8 @@ namespace FairyGUI
             {
                 ReparentNode(maskOuter, _maskRoot);
                 m.node.ClipChildren = CanvasItem.ClipChildrenMode.Only;
-                m.node.UseParentMaterial = true; //MaskRoot has no material: the default clip shader is used
+                _maskRoot.Material = GetMaskClipMaterial();
+                m.node.UseParentMaterial = true; //the mask is drawn with MaskRoot's clip material (binary alpha test)
                 _maskContent = new Node2D();
                 _maskContent.Name = "MaskContent";
                 m.node.AddChild(_maskContent, false, Node.InternalMode.Back);
@@ -1278,13 +1284,43 @@ namespace FairyGUI
                     + "shader_type canvas_item;\n"
                     + "render_mode unshaded, blend_mul;\n"
                     + "void fragment() {\n"
-                    + "\tfloat k = 1.0 - COLOR.a;\n"
+                    + "\tfloat k = 1.0 - step(0.001, COLOR.a);\n" // binary hole, like Unity's stencil
                     + "\tCOLOR = vec4(k, k, k, k);\n"
                     + "}\n";
                 _maskEraseMaterial = new ShaderMaterial();
                 _maskEraseMaterial.Shader = shader;
             }
             return _maskEraseMaterial;
+        }
+
+        /// <summary>
+        /// [Godot] ClipChildren material of a normal mask: like Godot's default clip shader (`COLOR.rgb = back buffer`),
+        /// but the mask alpha is thresholded at 0.001, the binary stencil test of Unity's ALPHA_MASK. With the default
+        /// shader the content would be scaled by the mask alpha and by the container alpha a second time.
+        /// </summary>
+        static ShaderMaterial GetMaskClipMaterial()
+        {
+            if (_maskClipMaterial == null)
+            {
+                _maskClipMaterial = new ShaderMaterial();
+                _maskClipMaterial.Shader = ShaderConfig.GetShader(ShaderConfig.maskShader);
+                _maskClipMaterial.SetShaderParameter("reversed", false);
+            }
+            return _maskClipMaterial;
+        }
+
+        /// <summary>
+        /// [Godot] CanvasGroup material of a reversed mask root: outputs the composited group without Godot's default
+        /// `COLOR *= back buffer`, which would apply the ancestor alpha twice (see fairygui_painting.gdshader).
+        /// </summary>
+        static ShaderMaterial GetMaskGroupMaterial()
+        {
+            if (_maskGroupMaterial == null)
+            {
+                _maskGroupMaterial = new ShaderMaterial();
+                _maskGroupMaterial.Shader = ShaderConfig.GetShader(ShaderConfig.paintingShader);
+            }
+            return _maskGroupMaterial;
         }
     }
 
