@@ -1659,7 +1659,7 @@ namespace FairyGUI
                     {
                         if (outlineSize > 0)
                             run.font.DrawCharOutline(canvasItem, pos * s, run.ch, run.fontSize, outlineSize, color);
-                        else
+                        else if (!(run.gradient && !useEffectColor && DrawGradientGlyph(canvasItem, pos * s, run)))
                             run.font.DrawChar(canvasItem, pos * s, run.ch, run.fontSize, color);
                     }
                     else
@@ -1686,6 +1686,72 @@ namespace FairyGUI
         static void AddRect(Rid canvasItem, float s, Rect2 rect, Color color)
         {
             RenderingServer.CanvasItemAddRect(canvasItem, new Rect2(rect.Position * s, rect.Size * s), color);
+        }
+
+        static readonly int[] s_quadIndices = { 0, 1, 2, 0, 2, 3 };
+        static readonly Vector2[] s_quadPoints = new Vector2[4];
+        static readonly Vector2[] s_quadUVs = new Vector2[4];
+        static readonly Color[] s_quadColors = new Color[4];
+
+        /// <summary>
+        /// [Godot] Font.DrawChar takes one modulate color, Unity tints the 4 glyph vertices with TextFormat.gradientColor.
+        /// This draws the glyph's cache texture region as a quad with 4 vertex colors, like
+        /// TextServerAdvanced._font_draw_glyph does for a plain (non-MSDF, non-LCD, not fixed-size) font without
+        /// oversampling. Returns false when the glyph has to be drawn by DrawChar (with the average color) instead:
+        /// other font kinds, oversampling (the quad would use a different glyph cache than DrawChar), or no glyph.
+        /// Subpixel positioning is not applied: the quad is placed on whole pixels.
+        /// </summary>
+        bool DrawGradientGlyph(Rid canvasItem, Vector2 pos, GlyphRun run)
+        {
+            Viewport vp = node.IsInsideTree() ? node.GetViewport() : null;
+            if (vp != null && vp.GetOversampling() != 1)
+                return false;
+
+            TextServer ts = TextServerManager.GetPrimaryInterface();
+            Godot.Collections.Array<Rid> rids = run.font.GetRids();
+            int cnt = rids.Count;
+            for (int i = 0; i < cnt; i++)
+            {
+                Rid rid = rids[i];
+                if (!ts.FontHasChar(rid, run.ch))
+                    continue;
+
+                if (ts.FontIsMultichannelSignedDistanceField(rid) || ts.FontGetFixedSize(rid) > 0
+                    || ts.FontGetAntialiasing(rid) == TextServer.FontAntialiasing.Lcd)
+                    return false;
+                float os = (float)ts.FontGetOversampling(rid);
+                if (os > 0 && os != 1)
+                    return false;
+
+                Vector2I size = new Vector2I(run.fontSize, 0);
+                long glyph = ts.FontGetGlyphIndex(rid, run.fontSize, run.ch, 0);
+                if (glyph == 0)
+                    return true; // non visual character, nothing to draw (as in DrawChar)
+
+                Rid tex = ts.FontGetGlyphTextureRid(rid, size, glyph);
+                if (!tex.IsValid)
+                    return true; // no bitmap (space etc.)
+
+                Vector2 texSize = ts.FontGetGlyphTextureSize(rid, size, glyph);
+                Rect2 uv = ts.FontGetGlyphUVRect(rid, size, glyph);
+                if (texSize.X <= 0 || texSize.Y <= 0 || uv.Size.X <= 0 || uv.Size.Y <= 0)
+                    return true;
+
+                Vector2 p = new Vector2(UMath.Floor(pos.X), UMath.Floor(pos.Y)) + ts.FontGetGlyphOffset(rid, size, glyph);
+                Vector2 gs = ts.FontGetGlyphSize(rid, size, glyph);
+                Vector2 uv0 = uv.Position / texSize;
+                Vector2 uv1 = uv.End / texSize;
+
+                s_quadPoints[0] = new Vector2(p.X, p.Y + gs.Y); s_quadUVs[0] = new Vector2(uv0.X, uv1.Y); s_quadColors[0] = run.colorBL;
+                s_quadPoints[1] = p; s_quadUVs[1] = uv0; s_quadColors[1] = run.colorTL;
+                s_quadPoints[2] = new Vector2(p.X + gs.X, p.Y); s_quadUVs[2] = new Vector2(uv1.X, uv0.Y); s_quadColors[2] = run.colorTR;
+                s_quadPoints[3] = p + gs; s_quadUVs[3] = uv1; s_quadColors[3] = run.colorBR;
+
+                RenderingServer.CanvasItemAddTriangleArray(canvasItem, s_quadIndices, s_quadPoints, s_quadColors, s_quadUVs,
+                    null, null, tex);
+                return true;
+            }
+            return false;
         }
 
         /// <summary>
@@ -1740,6 +1806,14 @@ namespace FairyGUI
             /// Emulated bold (BaseFont.customBold): also drawn moved by 0.5 in 4 directions.
             /// </summary>
             public bool bold;
+
+            /// <summary>
+            /// [Godot] TextFormat.gradientColor: the fill pass draws the glyph quad with these corner colors
+            /// (Unity's vertex order: bottom-left, top-left, top-right, bottom-right). color is their average,
+            /// used when the glyph cannot be drawn as a quad (see DrawGradientGlyph).
+            /// </summary>
+            public bool gradient;
+            public Color colorBL, colorTL, colorTR, colorBR;
         }
 
         /// <summary>

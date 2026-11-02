@@ -145,8 +145,8 @@ namespace FairyGUI
             _boldVertice = format.bold && (customBold || (format.italic && customBoldAndItalic));
             format.FillVertexColors(vertexColors);
 
-            // [Godot] Gradient vertex colors cannot be applied to Font.DrawChar glyphs (one modulate color per glyph):
-            // a gradient is drawn with the average of its colors.
+            // [Godot] Font.DrawChar has one modulate color per glyph. Gradient glyphs are drawn as quads with the 4 vertex
+            // colors (TextField.DrawGradientGlyph); this average is the fallback when that is not possible.
             if (format.gradientColor == null)
                 _runColor = format.color;
             else
@@ -250,6 +250,15 @@ namespace FairyGUI
             run.position = new Vector2(x, -y);
             run.color = _runColor;
             run.bold = _boldVertice;
+            if (_format.gradientColor != null)
+            {
+                // Unity's DrawGlyph adds the vertices bottom-left, top-left, top-right, bottom-right with vertexColors[0..3]
+                run.gradient = true;
+                run.colorBL = vertexColors[0];
+                run.colorTL = vertexColors[1];
+                run.colorTR = vertexColors[2];
+                run.colorBR = vertexColors[3];
+            }
             _glyphRuns.Add(run);
         }
 
