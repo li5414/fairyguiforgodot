@@ -163,6 +163,8 @@ namespace FairyGUI.Utils
                 _buttonPool.Push(obj);
             else if (obj is HtmlLink)
                 _linkPool.Push(obj);
+            else if (obj is HtmlSelect)
+                _selectPool.Push(obj); // [Godot] missing in Unity too; there the orphan was destroyed with the pool GameObject
 
             if (obj.displayObject != null)
             {
@@ -192,6 +194,16 @@ namespace FairyGUI.Utils
         /// pool Node. In Unity the pool GameObject lives under the Stage and is destroyed with it; Godot does not free
         /// orphan nodes automatically. After this call pooling is off: objects are created fresh and disposed on free.
         /// </summary>
+        /// <summary>
+        /// [Godot] Frees the pooled objects and the pool node if the shared context was created (called when the
+        /// application quits: Unity destroyed the pool GameObject with the Stage, Godot never frees orphan nodes).
+        /// </summary>
+        public static void DisposeInstance()
+        {
+            if (_inst != null)
+                _inst.Dispose();
+        }
+
         virtual public void Dispose()
         {
             DisposePool(_imagePool);

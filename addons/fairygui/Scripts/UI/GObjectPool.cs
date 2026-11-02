@@ -102,10 +102,13 @@ namespace FairyGUI
             }
 
             // [Godot] Unity: if (_manager != null) obj.displayObject.cachedTransform.SetParent(_manager, false);
-            // Pooled objects stay as orphan nodes instead of being parked under the manager. The call is
-            // unconditional because _manager no longer affects behaviour. Pooled nodes are no longer freed with
-            // the list's node tree; GList.Dispose -> Clear() disposes them.
+            // RemoveFromParent detaches and hides the node; it is then parked under the manager (the list's container
+            // node) so that it is freed with the list's node tree, as in Unity, even if the list is never disposed.
+            // Reuse re-parents it like any node added to a container.
             obj.displayObject.RemoveFromParent();
+            Node outer = obj.displayObject.GetOuterNode();
+            if (outer != null && outer.GetParent() == null && _manager != null && GodotObject.IsInstanceValid(_manager))
+                _manager.AddChild(outer);
             arr.Enqueue(obj);
         }
     }

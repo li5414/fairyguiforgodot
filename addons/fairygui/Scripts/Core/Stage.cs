@@ -811,6 +811,10 @@ namespace FairyGUI
                 {
                     player = new AudioStreamPlayer();
                     _audio.AddChild(player);
+                    // [Godot] Unity's AudioSource.PlayOneShot does not keep the clip: release the stream when it ends,
+                    // so UIPackage.UnloadAssets/RemovePackage can free it. (Stop() does not emit finished.)
+                    AudioStreamPlayer created = player;
+                    created.Finished += () => created.Stream = null;
                 }
                 else
                 {

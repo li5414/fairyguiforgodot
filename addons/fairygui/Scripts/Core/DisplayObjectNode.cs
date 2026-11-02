@@ -23,7 +23,9 @@ namespace FairyGUI
 
         public override void _Draw()
         {
-            owner?.OnNodeDraw();
+            // A disposed owner's node can still get one redraw before QueueFree frees it at the end of the frame.
+            if (owner != null && (owner._flags & DisplayObject.Flags.Disposed) == 0)
+                owner.OnNodeDraw();
         }
 
         public override void _Notification(int what)

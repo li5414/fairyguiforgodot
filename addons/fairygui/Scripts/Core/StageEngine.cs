@@ -129,8 +129,16 @@ namespace FairyGUI
 
             beingQuit = true;
             UIPackage.RemoveAllPackages();
+            // [Godot] Unity destroyed the whole GameObject hierarchy at quit. Godot never frees orphan nodes, so the
+            // GObject layer (GList pools, hidden children) and the HTML object pool are disposed explicitly.
+            if (GRoot._inst != null && !GRoot._inst.isDisposed)
+            {
+                try { GRoot._inst.Dispose(); }
+                catch (System.Exception e) { GD.PushError("FairyGUI: GRoot.Dispose at quit failed: " + e); }
+            }
             if (Stage.instantiated)
                 Stage.inst.Dispose();
+            FairyGUI.Utils.HtmlPageContext.DisposeInstance();
         }
 
         /// <summary>

@@ -44,6 +44,32 @@ namespace FairyGUI
         }
 
         /// <summary>
+        /// [Godot] Cells of collapsed folders are parked at the tree node, outside the display list and the pool, so
+        /// GComponent.Dispose does not reach them. In Unity they (and their hidden children) were destroyed with the
+        /// GameObject hierarchy; here their hidden children's orphan nodes would never be freed.
+        /// </summary>
+        override public void Dispose()
+        {
+            if (_disposed)
+                return;
+            DisposeCollapsedCells(_rootNode);
+            base.Dispose();
+        }
+
+        void DisposeCollapsedCells(GTreeNode folderNode)
+        {
+            int cnt = folderNode.numChildren;
+            for (int i = 0; i < cnt; i++)
+            {
+                GTreeNode node = folderNode.GetChildAt(i);
+                if (node._cell != null && node._cell.parent == null && !node._cell.isDisposed)
+                    node._cell.Dispose();
+                if (node.isFolder)
+                    DisposeCollapsedCells(node);
+            }
+        }
+
+        /// <summary>
         /// TreeView的顶层节点，这是个虚拟节点，也就是他不会显示出来。
         /// </summary>
         public GTreeNode rootNode
