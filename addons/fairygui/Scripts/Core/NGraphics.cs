@@ -953,6 +953,26 @@ namespace FairyGUI
         }
 
         /// <summary>
+        /// [Godot] Maps uvs relative to an AtlasTexture (top-left origin, [0,1] = its Region) into its atlas.
+        /// Margin is not part of the mapping: [0,1] covers the region, which is how NTexture represents the texture
+        /// (margin = offset/originalSize).
+        /// </summary>
+        internal static void MapAtlasUVs(AtlasTexture tex, Vector2[] uvs, int count)
+        {
+            Texture2D atlas = tex.Atlas;
+            if (atlas == null)
+                return;
+            Vector2 asz = atlas.GetSize();
+            Rect2 region = tex.Region;
+            if (region.Size.X <= 0 || region.Size.Y <= 0)
+                region = new Rect2(Vector2.Zero, asz);
+            if (asz.X <= 0 || asz.Y <= 0)
+                return;
+            for (int i = 0; i < count; i++)
+                uvs[i] = (region.Position + uvs[i] * region.Size) / asz;
+        }
+
+        /// <summary>
         /// [Godot] Submits the cached mesh to another CanvasItem (e.g. a clip_children node that draws a mask).
         /// Must be called while that CanvasItem is being drawn.
         /// </summary>
@@ -996,6 +1016,12 @@ namespace FairyGUI
                 Vector2 uv = uvs[i];
                 outUVs[i] = new Vector2(uv.X, 1 - uv.Y);
             }
+
+            // [Godot] An AtlasTexture's RID is the RID of its atlas: NTexture uvs are relative to the AtlasTexture, so map
+            // them into the atlas here, the single submit point (covers every NTexture path, sub-sprites and Reload).
+            AtlasTexture atlasTex = tex as AtlasTexture;
+            if (atlasTex != null)
+                MapAtlasUVs(atlasTex, outUVs, vertCount);
 
             if (transform != null)
                 RenderingServer.CanvasItemAddSetTransform(canvasItem, (Transform2D)transform);

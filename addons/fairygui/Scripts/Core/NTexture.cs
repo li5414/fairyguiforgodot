@@ -162,21 +162,14 @@ namespace FairyGUI
                 _originalSize = new Vector2(_nativeTexture.GetWidth(), _nativeTexture.GetHeight());
             _region = new Rect(0, 0, _originalSize.X, _originalSize.Y);
 
-            // [Godot] An AtlasTexture is drawn with the RID of its atlas, so draw from the atlas with the sub-region uv
-            // (the Godot counterpart of Unity's NTexture(Sprite)). Margin becomes offset/originalSize.
+            // [Godot] AtlasTexture (the Godot counterpart of Unity's NTexture(Sprite)): uvs stay relative to the
+            // AtlasTexture's region, NGraphics.Draw maps them into the atlas (its RID is the atlas RID). Margin becomes
+            // offset/originalSize.
             if (texture is AtlasTexture at && at.Atlas != null)
             {
-                Texture2D atlas = at.Atlas;
-                float aw = atlas.GetWidth();
-                float ah = atlas.GetHeight();
                 Rect r = at.Region;
                 if (r.width <= 0 || r.height <= 0)
-                    r = new Rect(0, 0, aw, ah);
-
-                _nativeTexture = atlas;
-                Rect sub = new Rect(r.x / aw, 1 - r.yMax / ah, r.width / aw, r.height / ah);
-                uvRect = new Rect(sub.x + uvRect.x * sub.width, sub.y + uvRect.y * sub.height,
-                    uvRect.width * sub.width, uvRect.height * sub.height);
+                    r = new Rect(0, 0, at.Atlas.GetWidth(), at.Atlas.GetHeight());
                 _region = new Rect(0, 0, r.width, r.height);
                 _offset = at.Margin.Position;
                 _originalSize = new Vector2(r.width + at.Margin.Size.X, r.height + at.Margin.Size.Y);
