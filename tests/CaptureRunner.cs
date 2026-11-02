@@ -16,6 +16,7 @@ public partial class CaptureRunner : Node
     string _out = "user://shots";
     double _wait = 3;
     bool _subdemos;
+    string _click;
 
     public override void _Ready()
     {
@@ -25,6 +26,7 @@ public partial class CaptureRunner : Node
             else if (a.StartsWith("--out=")) _out = a.Substring(6).Trim('"');
             else if (a.StartsWith("--wait=")) double.TryParse(a.Substring(7), NumberStyles.Float, CultureInfo.InvariantCulture, out _wait);
             else if (a == "--subdemos") _subdemos = true;
+            else if (a.StartsWith("--click=")) _click = a.Substring(8).Trim('"');
         }
         Run();
     }
@@ -57,6 +59,19 @@ public partial class CaptureRunner : Node
             AddChild(create());
             await Seconds(_wait);
             await Capture(dir, _example);
+
+            if (!string.IsNullOrEmpty(_click))
+            {
+                GObject target = FindByName(_click);
+                if (target == null)
+                    GD.PrintErr("[CAPTURE] no object named " + _click);
+                else
+                {
+                    target.onClick.Call();
+                    await Seconds(1.5);
+                    await Capture(dir, _example + "__" + _click);
+                }
+            }
 
             if (_subdemos)
             {
@@ -137,5 +152,21 @@ public partial class CaptureRunner : Node
         foreach (char c in System.IO.Path.GetInvalidFileNameChars())
             s = s.Replace(c, '_');
         return s;
+    }
+
+    /// <summary>
+    /// A child named `name` of one of GRoot's top-level components (the example's main view).
+    /// </summary>
+    static GObject FindByName(string name)
+    {
+        GRoot root = GRoot.inst;
+        for (int i = 0; i < root.numChildren; i++)
+        {
+            GComponent com = root.GetChildAt(i) as GComponent;
+            GObject obj = com?.GetChild(name);
+            if (obj != null)
+                return obj;
+        }
+        return null;
     }
 }

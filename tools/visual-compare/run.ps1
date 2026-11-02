@@ -38,6 +38,8 @@ $Examples = [ordered]@{
     'TypingEffect' = 'Example 28 - TypingEffect'
 }
 $names = @($Examples.Keys | Where-Object { $Only.Count -eq 0 -or $Only -contains $_ })
+# Object clicked after the first capture (one more PNG, <Example>__<object>.png): shows states that need input.
+$Clicks = @{ 'Guide' = 'n2'; 'Bag' = 'bagBtn'; 'ModalWaiting' = 'n0' }
 
 function Q([string]$s) { '"' + $s + '"' }
 
@@ -92,6 +94,7 @@ if ($Steps -contains 'unity') {
         $argv = @('-screen-fullscreen', '0', '-screen-width', '1136', '-screen-height', '640', '-logFile', (Q "$shots\unity\$n.log"),
             '-captureScene', (Q $Examples[$n]), '-captureName', $n, '-captureOut', (Q "$shots\unity"), '-captureWait', $Wait.ToString($inv))
         if ($n -eq 'Basics') { $argv += @('-captureSubdemos', '1') }
+        if ($Clicks.ContainsKey($n)) { $argv += @('-captureClick', $Clicks[$n]) }
         $code = Run $player $argv 180
         Write-Host ("unity  {0,-14} exit {1}" -f $n, $code)
     }
@@ -103,6 +106,7 @@ if ($Steps -contains 'godot') {
         $argv = @('--path', (Q $repo), '--resolution', '1136x640', '--position', '40,40', 'res://tests/CaptureRunner.tscn', '--',
             "--example=$n", ('--out=' + (Q "$shots\godot")), ('--wait=' + $Wait.ToString($inv)))
         if ($n -eq 'Basics') { $argv += '--subdemos' }
+        if ($Clicks.ContainsKey($n)) { $argv += "--click=$($Clicks[$n])" }
         $code = Run $GodotExe $argv 180
         Write-Host ("godot  {0,-14} exit {1}" -f $n, $code)
     }

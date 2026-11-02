@@ -48,6 +48,20 @@ public class UnityCaptureRunner : MonoBehaviour
         yield return new WaitForSecondsRealtime(_wait);
         yield return Capture(_name);
 
+        string click = Arg("-captureClick");
+        if (!string.IsNullOrEmpty(click))
+        {
+            GObject target = FindByName(click);
+            if (target == null)
+                Debug.LogError("[CAPTURE] no object named " + click);
+            else
+            {
+                target.onClick.Call();
+                yield return new WaitForSecondsRealtime(1.5f);
+                yield return Capture(_name + "__" + click);
+            }
+        }
+
         if (_subdemos)
         {
             GComponent view = FindMainView();
@@ -112,6 +126,26 @@ public class UnityCaptureRunner : MonoBehaviour
         foreach (char c in Path.GetInvalidFileNameChars())
             s = s.Replace(c, '_');
         return s;
+    }
+
+    // A child named `name` of a UIPanel's UI or of one of GRoot's top-level components (the example's main view).
+    static GObject FindByName(string name)
+    {
+        foreach (UIPanel p in FindObjectsByType<UIPanel>(FindObjectsSortMode.None))
+        {
+            GObject obj = p.ui != null ? p.ui.GetChild(name) : null;
+            if (obj != null)
+                return obj;
+        }
+        GRoot root = GRoot.inst;
+        for (int i = 0; i < root.numChildren; i++)
+        {
+            GComponent com = root.GetChildAt(i) as GComponent;
+            GObject obj = com != null ? com.GetChild(name) : null;
+            if (obj != null)
+                return obj;
+        }
+        return null;
     }
 
     static string Arg(string name)
