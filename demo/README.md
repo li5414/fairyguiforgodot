@@ -49,7 +49,11 @@ The smoke test runs these phases:
 2. Instantiates every exported component and adds it to GRoot. Then it switches every controller page, plays every transition, and disposes the component.
 3. Tests GList virtual and loop scrolling, Transition (play, hook, stop, repeat), Controller, GTween, Window, modal wait and popups.
 4. Tests InputTextField focus and typing (Latin and CJK), Backspace and Enter. The keys go through `Viewport.PushInput`, then `StageEngine`, then `Stage`.
-5. Runs every example for a few frames and clicks its buttons. Then it clicks through the `DemoMain` menu with real mouse events.
+5. Tests a `UIPanel` in the scene: its content is on stage, a real click dispatches onClick, and the touch bubbles into `Stage.onTouchBegin`.
+6. Tests that NTextures built from a Godot `AtlasTexture` (constructor, region, sub-sprite, `Reload`) address the right atlas pixels.
+7. Runs every example for a few frames and clicks its buttons. Then it clicks through the `DemoMain` menu with real mouse events.
+
+In headless mode the root viewport would get Godot's minimum size (64x64). `DemoUtil.EnsureInit` gives it the design size (1136x640), so the content scale factor is 1 and text metrics match a windowed run.
 
 Each check, and each engine error that occurs while it runs, is logged with the package or component name. Engine errors include `GD.PushError` calls and unhandled exceptions in callbacks. At the end the test prints a `[SMOKE] PASS` or `[SMOKE] FAIL` summary.
 

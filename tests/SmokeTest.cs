@@ -140,6 +140,8 @@ public partial class SmokeTest : Node
         _phases.Add(new Phase("Tween", PhaseTween));
         _phases.Add(new Phase("Window", PhaseWindow));
         _phases.Add(new Phase("Input", PhaseInput));
+        _phases.Add(new Phase("Panel", PhasePanel));
+        _phases.Add(new Phase("Textures", PhaseTextures));
         if (!_skipDemos)
             _phases.Add(new Phase("Demos", PhaseDemos));
 
@@ -1033,6 +1035,128 @@ public partial class SmokeTest : Node
         yield return Click(btn);
         yield return null;
         Check(clicks == 1, "real mouse click dispatches onClick (" + clicks + ")");
+    }
+
+    /// <summary>
+    /// UIPanel content (a registered panel root, not a Stage child) must behave as on stage: onStage,
+    /// clicks through the real input path, and bubbling into Stage-level listeners (GRoot popups, gestures).
+    /// The panel node lives in the root canvas (no camera), so viewport coordinates = its world coordinates.
+    /// </summary>
+    IEnumerator PhasePanel()
+    {
+        UIPanel panel = new UIPanel();
+        panel.Name = "SmokePanel";
+        panel.packageName = "Basics";
+        panel.componentName = "Demo_Button";
+        panel.Position = new Vector2(40, 40);
+        AddChild(panel);
+        yield return Frames(3);
+
+        GComponent ui = panel.ui;
+        if (!Check(ui != null, "UIPanel creates its UI"))
+        {
+            panel.QueueFree();
+            yield break;
+        }
+
+        GButton button = null;
+        for (int i = 0; i < ui.numChildren && button == null; i++)
+            button = ui.GetChildAt(i) as GButton;
+        if (!Check(button != null, "Demo_Button has a GButton child"))
+        {
+            panel.QueueFree();
+            yield break;
+        }
+
+        Check(ui.onStage, "panel UI is on stage");
+        Check(button.onStage, "panel content is on stage");
+        Check(button.displayObject.stage == Stage.inst, "panel content's stage is Stage.inst");
+
+        int clicks = 0;
+        button.onClick.Add(() => { clicks++; });
+        bool stageSawTouch = false;
+        FairyGUI.Container buttonRoot = (FairyGUI.Container)button.displayObject;
+        EventCallback1 capture = (EventContext ctx) =>
+        {
+            DisplayObject d = ctx.initiator as DisplayObject;
+            if (d != null && (d == buttonRoot || buttonRoot.IsAncestorOf(d)))
+                stageSawTouch = true;
+        };
+        Stage.inst.onTouchBegin.AddCapture(capture);
+
+        yield return Click(button);
+        yield return null;
+        Stage.inst.onTouchBegin.RemoveCapture(capture);
+
+        Check(clicks == 1, "real click on UIPanel content dispatches onClick (" + clicks + ")");
+        Check(stageSawTouch, "touch on UIPanel content bubbles into Stage.onTouchBegin");
+
+        RemoveChild(panel); // _ExitTree: UnregisterPanel + dispose
+        panel.QueueFree();
+        yield return Frames(2);
+    }
+
+    /// <summary>
+    /// NTexture uvs for a Godot AtlasTexture (its RID is the atlas RID): every path must address the right atlas
+    /// pixels after NGraphics' submit-time mapping. The atlas is 64x64 with a unique color per 16x16 cell; the
+    /// AtlasTexture is the 32x32 region at (32,32), i.e. cells (2..3, 2..3).
+    /// </summary>
+    IEnumerator PhaseTextures()
+    {
+        Godot.Image img = Godot.Image.CreateEmpty(64, 64, false, Godot.Image.Format.Rgba8);
+        for (int cy = 0; cy < 4; cy++)
+            for (int cx = 0; cx < 4; cx++)
+                img.FillRect(new Rect2I(cx * 16, cy * 16, 16, 16), CellColor(cx, cy));
+        ImageTexture atlasTex = ImageTexture.CreateFromImage(img);
+        AtlasTexture at = new AtlasTexture();
+        at.Atlas = atlasTex;
+        at.Region = new Rect2(32, 32, 32, 32);
+
+        // 4-arg ctor (NTexture(Texture2D)): the whole AtlasTexture, its center is the corner of cells (2..3, 2..3)
+        NTexture root = new NTexture(at);
+        Check(CellAt(img, root, new Vector2(0.25f, 0.25f)) == CellColor(2, 2), "AtlasTexture root: top-left quarter -> cell (2,2)");
+        Check(CellAt(img, root, new Vector2(0.75f, 0.75f)) == CellColor(3, 3), "AtlasTexture root: bottom-right quarter -> cell (3,3)");
+
+        // sub-sprite of that root, region local to the AtlasTexture
+        NTexture sub = new NTexture(root, new Rect(16, 0, 16, 16), false);
+        Check(CellAt(img, sub, new Vector2(0.5f, 0.5f)) == CellColor(3, 2), "sub-sprite of an AtlasTexture root -> cell (3,2)");
+
+        // NTexture(Texture2D, Rect) with a region local to the AtlasTexture
+        NTexture regioned = new NTexture(at, new Rect(0, 16, 16, 16));
+        Check(CellAt(img, regioned, new Vector2(0.5f, 0.5f)) == CellColor(2, 3), "NTexture(AtlasTexture, region) -> cell (2,3)");
+
+        // Reload: sprites created against a same-size placeholder, then the AtlasTexture is assigned
+        NTexture reloaded = new NTexture(ImageTexture.CreateFromImage(Godot.Image.CreateEmpty(32, 32, false, Godot.Image.Format.Rgba8)));
+        NTexture reloadedSub = new NTexture(reloaded, new Rect(0, 0, 16, 16), false);
+        Try("NTexture.Reload(AtlasTexture)", () => reloaded.Reload(at, null));
+        Check(CellAt(img, reloaded, new Vector2(0.75f, 0.25f)) == CellColor(3, 2), "Reload(AtlasTexture): root -> cell (3,2)");
+        Check(CellAt(img, reloadedSub, new Vector2(0.5f, 0.5f)) == CellColor(2, 2), "Reload(AtlasTexture): sub-sprite -> cell (2,2)");
+
+        // a plain texture is not remapped
+        NTexture plain = new NTexture(atlasTex);
+        Check(CellAt(img, plain, new Vector2(0.1f, 0.1f)) == CellColor(0, 0), "plain texture: top-left -> cell (0,0)");
+        yield return null;
+    }
+
+    static Color CellColor(int cx, int cy)
+    {
+        return Color.Color8((byte)(cx * 60 + 20), (byte)(cy * 60 + 20), 128, 255);
+    }
+
+    /// <summary>
+    /// The atlas pixel that NGraphics samples for a point of the NTexture (p in [0,1], top-left origin): uvRect is in
+    /// Unity's convention (origin bottom-left), Draw converts v to 1 - v and maps AtlasTexture uvs into the atlas.
+    /// </summary>
+    static Color CellAt(Godot.Image atlas, NTexture t, Vector2 p)
+    {
+        Rect r = t.uvRect;
+        Vector2 unityUV = new Vector2(r.x + p.X * r.width, r.yMax - p.Y * r.height);
+        Vector2[] uv = { new Vector2(unityUV.X, 1 - unityUV.Y) };
+        if (t.nativeTexture is AtlasTexture a)
+            NGraphics.MapAtlasUVs(a, uv, 1);
+        int x = Math.Clamp((int)(uv[0].X * atlas.GetWidth()), 0, atlas.GetWidth() - 1);
+        int y = Math.Clamp((int)(uv[0].Y * atlas.GetHeight()), 0, atlas.GetHeight() - 1);
+        return atlas.GetPixel(x, y);
     }
 
     IEnumerator PhaseDemos()
