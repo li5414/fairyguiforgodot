@@ -110,7 +110,8 @@
 - 默认资源加载器：`ResourceLoader.Load<T>(assetNamePrefix + fileName + ext)`，与 Unity 版命名规则一致（如 `Basics_atlas0.png`、`Basics_gojg7u.wav`）。纹理、声音、字体由 Godot 导入系统处理。
 - `LoadResource` 委托签名保留，`DestroyMethod` 枚举保留（Godot 资源是引用计数，无实际作用）。`LoadResourceAsync` 用 `ResourceLoader.LoadThreadedRequest` 实现。
 - 删除所有 AssetBundle 重载（Godot 用 `ProjectSettings.LoadResourcePack` 加载 PCK 后，资源同样以 `res://` 路径访问）。
-- 导出提醒：`.bytes/.fui` 不是 Godot 资源，导出预设的“非资源文件过滤”需加入 `*.bytes, *.fui`。
+- 导出：`.bytes/.fui` 不是 Godot 资源，默认不会被导出。插件的 `FairyGUIExportPlugin` 在 `_ExportBegin` 中把项目里的 `*_fui.bytes` / `*.fui` 用 `AddFile` 打进 pck。导出预设的 include 过滤已经包含的文件会跳过，因为 Godot 不会对两者去重。图集、声音、字体是普通资源，在“导出所有资源”模式下正常导出；其他模式下插件会给出警告。
+- 官方导出模板（Godot 4.5 起）不接受命令行指定的场景路径。demo 主场景支持 `-- --scene=res://...` 参数，用于在导出版里运行冒烟测试和截图。
 
 ## 7. 节点组件（替代 MonoBehaviour）
 

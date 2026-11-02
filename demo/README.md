@@ -41,6 +41,9 @@ dotnet build FairyGUIForGodot.csproj
 godot --headless --path . --import
 godot --headless --path . res://tests/SmokeTest.tscn
 godot --headless --path . res://tests/SmokeTest.tscn -- --skip-demos   # skip the phase that runs every example
+# exported build: official export templates ignore scene paths on the command line, so the demo menu switches to the
+# scene given with --scene= (after "--"). Export with: godot --headless --path . --export-release "Windows Desktop" out/FairyGUIDemo.exe
+out/FairyGUIDemo.console.exe --headless -- --scene=res://tests/SmokeTest.tscn
 ```
 
 The smoke test runs these phases:
