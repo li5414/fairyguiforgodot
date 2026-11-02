@@ -40,7 +40,9 @@
 ### 3.1 裁剪与遮罩
 
 - 矩形裁剪（`Container.clipRect`，overflow hidden/scroll）：`RenderingServer.CanvasItemSetCustomRect(rid, true, rect)` + `CanvasItemSetClip(rid, true)`，作用于该节点及其全部子孙。Godot 按屏幕轴对齐裁剪（旋转后取 AABB），与 Unity 版基于 shader 的裁剪效果一致。`clipSoftness` 不支持，标注 `// [Godot]`。
-- 遮罩（`Container.mask`）：使用 `CanvasItem.ClipChildren = ClipChildrenMode.Only`。Godot 要求遮罩节点是被遮罩内容的父节点，而 FairyGUI 的 mask 是容器的一个子对象，所以 Container 内部需要调整节点结构（例如加一个内部节点，承载遮罩绘制并作为其余子节点的父节点）。对外 API 不变，具体结构由 core-display 决定并写注释说明。`reversedMask` 尽量实现（例如反向 alpha 的 shader），实现不了就打警告，退化为普通遮罩。
+- 遮罩（`Container.mask`）：使用 `CanvasItem.ClipChildren = ClipChildrenMode.Only`。Godot 要求遮罩节点是被遮罩内容的父节点，而 FairyGUI 的 mask 是容器的一个子对象，所以 Container 内部加了 MaskRoot / MaskContent 节点调整结构（见 Container.cs 头部注释）。对外 API 不变。
+  - 普通遮罩：MaskRoot 使用 `fairygui_mask` 材质，按遮罩 alpha > 0.001 二值判断，与 Unity 的模板测试一致（硬边）。不能用 Godot 默认的 clip shader：它会把内容乘上遮罩 alpha，容器 alpha 也会被乘两次。
+  - `reversedMask`：MaskRoot 是 Transparent 模式的 CanvasGroup（材质同绘画模式，见 §3.2），遮罩画在 MaskEraser 下，用 `1 - step(0.001, alpha)` 挖出二值的洞。
 - CanvasGroup 与 ClipChildren 都依赖 backbuffer，二者嵌套时可能失效，在代码注释中写明。
 
 ### 3.2 材质、置灰、混合模式、滤镜
@@ -51,6 +53,7 @@
 - `GImage/GLoader/GMovieClip.material` 直接映射到 `Godot.Material`；`shader`（string）经 `ShaderConfig` 解析为 `Godot.Shader`。
 - `ColorFilter`：叶子对象用颜色矩阵 ShaderMaterial；容器使用 CanvasGroup 语义（`RenderingServer.CanvasItemSetCanvasGroupMode(rid, CanvasGroupMode.Transparent, ...)`），配合采样 `screen_texture` 的 shader。
 - `BlurFilter`：CanvasGroup + `textureLod` 近似模糊。
+- CanvasGroup 材质（`fairygui_painting` / `fairygui_blur`）只输出 back buffer，不再乘 `COLOR`：组内子节点画进 back buffer 时已带上所有祖先 alpha，而组矩形的 `COLOR` 又带了一遍，Godot 默认的 `COLOR *= c` 会让祖先 alpha 变成平方。
 - `EnterPaintingMode/LeavePaintingMode`、`cacheAsBitmap`：用 CanvasGroup 实现，**不移植** Unity 版的 RenderTexture + CaptureCamera 方案。
 - 滤镜与材质的契约（core-display ↔ core-graphics）：
   - `paintingGraphics` 仍是 `NGraphics`。进入绘画模式时，core-display 对承载节点设置 CanvasGroup 模式，`paintingGraphics` 的材质即作用于整个组。
@@ -70,6 +73,7 @@
   - 描边：先 `DrawCharOutline(canvasItem, pos, ch, size, outlineSize, color)` 再 `DrawChar`。阴影：按 shadowOffset 偏移，用阴影色多画一遍。
   - 粗体 / 斜体：FontManager 缓存 `FontVariation`（`VariationEmbolden`、`VariationTransform` 斜切）。下划线 / 删除线：`RenderingServer.CanvasItemAddRect`。
 - 因此 TextField 有两条绘制路径：位图字体 → VertexBuffer；动态字体 → 记录字形列表，在 `OnNodeDraw()` 中逐字绘制。两条路径都由 TextField 内部管理。
+- 渐变色文字（`TextFormat.gradientColor`）：`DrawChar` 只接受一个颜色，所以渐变字形改为从 TextServer 取字形缓存纹理和 uv，按 Unity 的顶点顺序画成带 4 个顶点色的四边形（`TextField.DrawGradientGlyph`）。MSDF、LCD 子像素、固定尺寸字体，以及视口有过采样时，退回用平均色的 `DrawChar`。
 - `FontManager`：API 同 Unity 版（`RegisterFont` / `GetFont` / `UnregisterFont`）。字体名解析顺序：已注册别名 → `ui://` 包内字体 → `res://` 路径 → `SystemFont`（按名）→ `ThemeDB.FallbackFont`。`UIConfig.defaultFont` 同样适用。
 - 打字效果（TypingEffect）：通过 TextField 的可见字符数控制只绘制前 N 个字形，不再修改顶点 alpha。
 - `InputTextField`：保留 FairyGUI 的编辑逻辑（光标、选区、剪贴板、restrict、maxLength、密码、键盘导航）。
@@ -96,7 +100,8 @@
   - 命中可触摸对象时调用 `GetViewport().SetInputAsHandled()`，事件不再穿透到游戏层和 Godot 原生 GUI（对应 Unity 版的 `Stage.isTouchOnUI`）。
 - `UIContentScaler` 从 MonoBehaviour 改为普通类，由 Stage 持有：`Stage.inst.contentScaler`。字段（scaleMode / screenMatchMode / designResolutionX/Y / constantScaleFactor / ignoreOrientation …）与静态 `scaleFactor / scaleLevel` 保留。GRoot 中的 `Stage.inst.gameObject.GetComponent<UIContentScaler>()` 改为 `Stage.inst.contentScaler`。
 - 声音：`NAudioClip` 包装 `AudioStream`（`nativeClip`）。`Stage.inst.PlayOneShotSound(clip, volumeScale)` 使用 Stage 下的 `AudioStreamPlayer` 池。
-- 额外根：UIPanel 等不在 Stage 下的容器通过 `Stage.inst.RegisterPanel(Container)` / `UnregisterPanel` 参与每帧 Update 与命中测试（对应 Unity 版 world-space panel 的处理）。
+- 额外根：UIPanel 等不在 Stage 下的容器通过 `Stage.inst.RegisterPanel(Container)` / `UnregisterPanel` 参与每帧 Update 与命中测试（对应 Unity 版 world-space panel 的处理）。Unity 中这些容器是 Stage 的子对象，所以已注册的面板根的 `topmost` 返回 `Stage.inst`（`stage`、onAddedToStage、点击、焦点、拖动都依赖它），事件冒泡到面板根后也会继续冒泡到 Stage。
+- 退出时（`StageEngine.OnQuit`）依次释放：所有包、GRoot（GObject 层：GList 池、隐藏的子对象）、Stage、HtmlPageContext 的对象池。Godot 不会自动释放孤儿节点；Unity 是随 GameObject 层级一起销毁的。对象池中的对象挂在池的管理节点（列表的容器节点）下，与 Unity 相同。
 
 ## 6. 资源加载
 
@@ -120,7 +125,8 @@
 |---|---|
 | rotationX/Y、perspective | 仿射近似（§2） |
 | clipSoftness | 不支持，按硬裁剪 |
-| reversedMask | 尽力实现，否则警告 |
+| reversedMask | CanvasGroup + 二值擦除（§3.1） |
+| 渐变色文字 | 普通动态字体：逐字形 4 顶点色；MSDF / LCD / 固定尺寸 / 过采样：平均色 |
 | 部分 BlendMode | 自定义 shader 近似 |
 | BlurFilter | CanvasGroup + shader 近似 |
 | Spine / DragonBones | 不内置；可用 GoWrapper / GLoader3D 包装 Godot 节点或 PackedScene |
