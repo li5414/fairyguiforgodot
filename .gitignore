@@ -12,3 +12,6 @@ bin/
 obj/
 *.user
 .vs/
+
+# Visual comparison output (tools/visual-compare)
+_shots/

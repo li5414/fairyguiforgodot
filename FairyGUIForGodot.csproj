@@ -12,5 +12,7 @@
   <ItemGroup>
     <!-- Reference sources (FairyGUI-unity) live in _ref/ and must never be compiled. -->
     <Compile Remove="_ref/**" />
+    <!-- Unity-side scripts of tools/visual-compare are copied into a Unity project, never compiled here. -->
+    <Compile Remove="tools/**" />
   </ItemGroup>
 </Project>
