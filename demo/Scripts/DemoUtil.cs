@@ -47,13 +47,14 @@ public static class DemoUtil
         if (_inited)
             return;
 
-        // The headless display server reports a 0x0 main window, which would give a content scale factor of 0.
-        // Give the root viewport the design size before the Stage reads it (only when it is empty).
+        // The headless display server has no real window: the root viewport gets Godot's minimum size (64x64), so the
+        // content scale factor would be ~0.056 and dynamic fonts would rasterize at ~1 px (text metrics in the smoke
+        // test would be meaningless). Give the root viewport the design size before the Stage reads it.
         SceneTree tree = Engine.GetMainLoop() as SceneTree;
         if (tree != null && tree.Root != null)
         {
             Vector2I size = tree.Root.Size;
-            if (size.X <= 0 || size.Y <= 0)
+            if (DisplayServer.GetName() == "headless" || size.X <= 0 || size.Y <= 0)
                 tree.Root.Size = new Vector2I(DesignWidth, DesignHeight);
         }
 

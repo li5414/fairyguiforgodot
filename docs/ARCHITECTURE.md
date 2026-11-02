@@ -36,6 +36,7 @@
 - 网格重建时机与 Unity 版相同：每帧 Update 遍历时按脏标记重建顶点缓冲并缓存数组，`_Draw` 只提交缓存。
 - 顶点色 = `graphics.color` × 顶点色。对象 alpha 走 `node.Modulate`，**不烘进顶点**。纯色图形传空纹理 RID，不需要白色占位纹理。
 - `NTexture` 包装 `Godot.Texture2D`，保留 uvRect / region / offset / originalSize / rotated 的语义。`alphaTexture` 字段保留，恒为 null（Godot 纹理自带 alpha）。像素级点击测试使用包内的 PixelHitTestData，与引擎无关。
+- `AtlasTexture`（对应 Unity 的 Sprite）：它的 RID 就是整张图集的 RID。NTexture 的 uv 一律相对于 AtlasTexture 的 Region，由 NGraphics 在提交时映射到图集（`NGraphics.MapAtlasUVs`），这样构造函数、region、子精灵、`Reload` 各条路径都正确。AtlasTexture 的 Margin 体现为 offset / originalSize，不参与 uv 映射。
 
 ### 3.1 裁剪与遮罩
 
@@ -124,7 +125,8 @@
 | 特性 | Godot 版处理 |
 |---|---|
 | rotationX/Y、perspective | 仿射近似（§2） |
-| clipSoftness | 不支持，按硬裁剪 |
+| clipSoftness | 不支持，按硬裁剪（其他非 Unity SDK 如 axmol 同样读取后忽略） |
+| 动态字体度量 | 用字体的真实度量（`GetHeight/GetAscent`），Unity 近似为 fontSize×1.25 / fontSize，行高与靠近边缘的断行可能差几像素 |
 | reversedMask | CanvasGroup + 二值擦除（§3.1） |
 | 渐变色文字 | 普通动态字体：逐字形 4 顶点色；MSDF / LCD / 固定尺寸 / 过采样：平均色 |
 | 部分 BlendMode | 自定义 shader 近似 |

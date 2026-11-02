@@ -1520,9 +1520,9 @@ namespace FairyGUI
         // [Godot] Unity has two variants here: the legacy one (EatKeyEvent(Event) + Input.compositionString) and
         // FAIRYGUI_INPUT_SYSTEM (RegisterEvent/UnregisterEvent + onIMECompositionChange/onTextInput). The Godot port
         // follows the structure of the second one:
-        //  - the composition string is read with DisplayServer.ImeGetText(). It is refreshed when StageEngine receives
-        //    NotificationOsImeUpdate (HandleImeUpdate), when a key event arrives (EatKeyEvent) and once per frame while
-        //    a field is being edited (Update);
+        //  - the composition string is read with DisplayServer.ImeGetText(). It is refreshed when a key event arrives
+        //    (EatKeyEvent) and once per frame while a field is being edited (Update). StageEngine does not forward
+        //    NotificationOsImeUpdate: polling covers it (HandleImeUpdate is kept for a host that wants to call it);
         //  - committed text arrives as InputEventKey(Unicode) through Stage, there is no separate onTextInput;
         //  - the platform layers (Windows/macOS/X11) already drop the key events consumed by the IME, so a key event is
         //    only eaten while a composition string is visible.
@@ -1574,7 +1574,9 @@ namespace FairyGUI
         }
 
         /// <summary>
-        /// [Godot] Called by StageEngine on NotificationOsImeUpdate. Unity (FAIRYGUI_INPUT_SYSTEM): OnIMECompositionChange.
+        /// [Godot] Refreshes the composition now (Unity FAIRYGUI_INPUT_SYSTEM: OnIMECompositionChange). Not called by
+        /// StageEngine: the focused field polls DisplayServer.ImeGetText() every frame. Call it from
+        /// NotificationOsImeUpdate if a host needs the composition earlier than the next frame.
         /// </summary>
         internal static void HandleImeUpdate()
         {
