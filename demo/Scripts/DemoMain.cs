@@ -17,6 +17,8 @@ public partial class DemoMain : Node2D
     static readonly Color ButtonColor = new Color(0.22f, 0.45f, 0.75f, 1);
     static readonly Color BackButtonColor = new Color(0.8f, 0.3f, 0.25f, 1);
 
+    bool _redirected; // --scene=: another scene replaced the menu before it was built
+    static bool _sceneArgUsed; // --scene= applies once per process (the smoke test instantiates DemoMain again later)
     GComponent _menu;
     GComponent _backBtn;
     Node _current;
@@ -44,6 +46,30 @@ public partial class DemoMain : Node2D
 
     public override void _Ready()
     {
+        // `-- --scene=res://tests/SmokeTest.tscn` opens another scene instead of the menu. Exported builds (official
+        // templates since Godot 4.5) ignore scene paths and --scene on the command line, so this is how the smoke test
+        // and the capture runner run inside an export.
+        foreach (string arg in _sceneArgUsed ? new string[0] : OS.GetCmdlineUserArgs())
+        {
+            if (!arg.StartsWith("--scene="))
+                continue;
+            _sceneArgUsed = true;
+            string scene = arg.Substring(8).Trim('"');
+            GD.Print("[Demo] switching to " + scene);
+            _redirected = true;
+            // deferred: the tree is still adding the main scene, it cannot be removed from inside its _Ready
+            Callable.From(() =>
+            {
+                Error err = GetTree().ChangeSceneToFile(scene);
+                if (err != Error.Ok)
+                {
+                    GD.PushError("[Demo] cannot open " + scene + ": " + err);
+                    GetTree().Quit(2);
+                }
+            }).CallDeferred();
+            return;
+        }
+
         DemoUtil.EnsureInit();
 
         // Every Unity example set Application.targetFrameRate = 60.
@@ -58,7 +84,7 @@ public partial class DemoMain : Node2D
 
     public override void _ExitTree()
     {
-        if (DemoUtil.IsQuitting)
+        if (DemoUtil.IsQuitting || _redirected)
             return;
 
         // The running example is a child node: its own _ExitTree has already released its UI.

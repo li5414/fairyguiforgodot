@@ -1,10 +1,9 @@
 # Reference sources (not part of this project)
 _ref/
 
-# Godot
+# Godot (export_presets.cfg is committed: signing secrets live in .godot/export_credentials.cfg)
 .godot/
 *.translation
-export_presets.cfg
 
 # .NET
 .mono/

@@ -23,6 +23,10 @@ window/size/viewport_height=640
 
 FairyGUI="*res://addons/fairygui/Scripts/Core/StageEngine.cs"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/fairygui/plugin.cfg")
+
 [dotnet]
 
 project/assembly_name="FairyGUIForGodot"
