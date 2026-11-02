@@ -137,6 +137,10 @@ namespace FairyGUI
 
             // [Godot] Always the play-mode branch: the size of the Stage (= viewport visible rect).
             // The edit-mode branch (Screen.width/height) is unreachable in Godot (no [Tool]).
+            // [Godot] The Stage size is refreshed once per frame. A game that resizes its root viewport and sets the content
+            // scale in the same frame (e.g. at startup) would get the old size, so sync it first. If the size changed this
+            // also runs onStageResized; the nested ApplyChange finds the size up to date and does not recurse further.
+            Stage.inst.CheckScreenSize();
             //In case of multi display， we keep using the display which Stage object resides.
             screenWidth = Stage.inst.width;
             screenHeight = Stage.inst.height;

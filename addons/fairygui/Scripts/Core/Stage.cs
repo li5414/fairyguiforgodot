@@ -1049,7 +1049,8 @@ namespace FairyGUI
         }
 
         // [Godot] Replaces StageCamera's per-frame screen size check (StageCamera.Update/OnScreenSizeChanged).
-        void CheckScreenSize()
+        // Internal: UIContentScaler.ApplyChange syncs the size before computing the scale factor.
+        internal void CheckScreenSize()
         {
             Vector2 size = GetViewportSize();
             int w = (int)size.X;
