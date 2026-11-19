@@ -1,0 +1,19 @@
+<Project>
+  <PropertyGroup>
+    <GodotProjectDir>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../..'))</GodotProjectDir>
+    <BaseIntermediateOutputPath>$(GodotProjectDir)/.godot/mono/temp/fairygui/obj/</BaseIntermediateOutputPath>
+  </PropertyGroup>
+  <Import Project="Sdk.props" Sdk="Godot.NET.Sdk" Version="4.7.2" />
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
+    <NoWarn>$(NoWarn);CS0162;CS0168;CS0169;CS0219;CS0414;CS0649;CS0067;CS0108;CS0114</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Editor/**" />
+  </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Godot.NET.Sdk" Version="4.7.2" />
+</Project>

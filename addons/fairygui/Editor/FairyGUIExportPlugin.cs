@@ -22,6 +22,7 @@ namespace FairyGUI
         {
             EditorExportPreset preset = GetExportPreset();
             string[] includeFilters = preset != null ? preset.GetIncludeFilter().Split(',', System.StringSplitOptions.RemoveEmptyEntries) : new string[0];
+            string[] excludeFilters = preset != null ? preset.GetExcludeFilter().Split(',', System.StringSplitOptions.RemoveEmptyEntries) : new string[0];
 
             var files = new List<string>();
             CollectPackages("res://", files);
@@ -29,9 +30,9 @@ namespace FairyGUI
             int added = 0;
             foreach (string file in files)
             {
-                if (MatchesFilter(file, includeFilters))
-                    continue; // the preset already exports it
-                byte[] data = FileAccess.GetFileAsBytes(file);
+                if (MatchesFilter(file, includeFilters) || MatchesFilter(file, excludeFilters))
+                    continue;
+                byte[] data = Godot.FileAccess.GetFileAsBytes(file);
                 if (data == null || data.Length == 0)
                 {
                     GD.PushWarning("FairyGUI export: cannot read " + file);

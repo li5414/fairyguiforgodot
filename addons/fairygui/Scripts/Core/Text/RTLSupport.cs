@@ -608,7 +608,7 @@ namespace FairyGUI
         // 是否中立方向字符
         private static bool _IsNeutrality(char uc)
         {
-            return (uc == ':' || uc == '：' || uc == ' ' || /*uc == '%' ||*/ /*uc == '+' ||*/ /*uc == '-' ||*/ uc == '\n' || uc == '\r' || uc == '\t' || uc == '@' ||
+            return (uc == ':' || uc == 0xFF1A || uc == ' ' || /*uc == '%' ||*/ /*uc == '+' ||*/ /*uc == '-' ||*/ uc == '\n' || uc == '\r' || uc == '\t' || uc == '@' ||
                 (uc >= 0x2600 && uc <= 0x27BF)); // 表情符号
         }
 
@@ -617,7 +617,7 @@ namespace FairyGUI
         {
             if (uc == '.')
                 return _IsNeutrality(nextChar);
-            return (uc == '!' || uc == '！' || uc == '。' || uc == '،' || uc == '?' || uc == '؟');
+            return (uc == '!' || uc == 0xFF01 || uc == 0x3002 || uc == '،' || uc == '?' || uc == '؟');
         }
 
         // 判断字符方向
@@ -668,11 +668,11 @@ namespace FairyGUI
         // 是否括号
         private static bool _IsBracket(char uc)
         {
-            return (uc == ')' || uc == '(' || uc == '）' || uc == '（' ||
-                    uc == ']' || uc == '[' || uc == '】' || uc == '【' ||
+            return (uc == ')' || uc == '(' || uc == 0xFF09 || uc == 0xFF08 ||
+                    uc == ']' || uc == '[' || uc == 0x3011 || uc == 0x3010 ||
                     uc == '}' || uc == '{' ||
                     //                   uc == '≥' || uc == '≤' || uc == '>' || uc == '<' || 
-                    uc == '》' || uc == '《' || uc == '“' || uc == '”' || uc == '"');
+                    uc == 0x300B || uc == 0x300A || uc == '“' || uc == '”' || uc == '"');
         }
 
         // 这些配对符,在从右至左排列中应该逆序显示
@@ -680,18 +680,18 @@ namespace FairyGUI
         {
             if (uc == '[') return ']';
             else if (uc == ']') return '[';
-            else if (uc == '【') return '】';
-            else if (uc == '】') return '【';
+            else if (uc == 0x3010) return (char)0x3011;
+            else if (uc == 0x3011) return (char)0x3010;
             else if (uc == '{') return '}';
             else if (uc == '}') return '{';
             else if (uc == '(') return ')';
             else if (uc == ')') return '(';
-            else if (uc == '（') return '）';
-            else if (uc == '）') return '（';
+            else if (uc == 0xFF08) return (char)0xFF09;
+            else if (uc == 0xFF09) return (char)0xFF08;
             else if (uc == '<') return '>';
             else if (uc == '>') return '<';
-            else if (uc == '《') return '》';
-            else if (uc == '》') return '《';
+            else if (uc == 0x300A) return (char)0x300B;
+            else if (uc == 0x300B) return (char)0x300A;
             else if (uc == '≤') return '≥';
             else if (uc == '≥') return '≤';
             else if (uc == '”') return '“';

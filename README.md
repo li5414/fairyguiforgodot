@@ -13,7 +13,7 @@
 
 ## 安装
 
-1. 把 `addons/fairygui` 复制到你的项目的 `addons/` 下。
+1. 将版本化插件 ZIP 解压到包含 `project.godot` 的目录，得到 `addons/fairygui/`。
 2. 构建 C#：编辑器里点 Build，或运行 `dotnet build`。
 3. 在“项目设置 > 插件”里启用 **FairyGUI**。插件会做两件事：
    - 注册名为 `FairyGUI` 的 autoload（`StageEngine`，负责驱动帧循环和输入）；
@@ -22,6 +22,8 @@
 不启用插件也能运行，首次使用时会自动创建 StageEngine。但导出前必须手动在导出预设的“导出非资源文件的过滤器”里加入 `*.bytes, *.fui`，否则导出后的游戏找不到 UI 包。
 
 如果插件目录改了名，需要同时修改 `ShaderConfig.shaderPath`，它的默认值是 `res://addons/fairygui/Shaders/`。
+
+宿主可在 `project.godot` 中配置自己的 `FairyGUI` autoload。启停插件会保留这个自定义入口。使用独立运行时程序集时，在宿主 `.csproj` 中从 `Compile` 移除 `addons/fairygui/**`、重新包含 `addons/fairygui/Editor/*.cs`，并用 `ProjectReference` 引用 `addons/fairygui/FairyGUI.csproj`。
 
 ## 发布 UI 包
 

@@ -3,6 +3,7 @@
 // export plugin that packs FairyGUI package files (*_fui.bytes / *.fui) into exports.
 // Without the autoload the runtime still works: Stage.Instantiate() creates the engine on first use.
 #if TOOLS
+#nullable enable
 using Godot;
 
 namespace FairyGUI
@@ -12,7 +13,7 @@ namespace FairyGUI
     {
         const string AutoloadName = "FairyGUI";
 
-        FairyGUIExportPlugin _exportPlugin;
+        FairyGUIExportPlugin? _exportPlugin;
 
         public override void _EnablePlugin()
         {
@@ -22,7 +23,7 @@ namespace FairyGUI
 
         public override void _DisablePlugin()
         {
-            if (ProjectSettings.HasSetting("autoload/" + AutoloadName))
+            if (ProjectSettings.GetSetting("autoload/" + AutoloadName, "").AsString() == "*" + GetStageEnginePath())
                 RemoveAutoloadSingleton(AutoloadName);
         }
 

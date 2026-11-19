@@ -14,3 +14,13 @@ obj/
 
 # Visual comparison output (tools/visual-compare)
 _shots/
+dist/
+~*.dll
+.nomedia
+.import/
+export.cfg
+export_credentials.cfg
+*.tmp
+data_*/
+mono_crash.*.json
+*.exe
